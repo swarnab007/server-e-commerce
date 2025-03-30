@@ -36,7 +36,7 @@ jobs:
 
       # Push the Docker image to DockerHub
       - name: Push to DockerHub
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/ecommerce-server:latest
+        run: docker pull swarnab/ecommerce-server:latest
 
   # Deploy Job
   deploy:
