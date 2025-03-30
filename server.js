@@ -61,7 +61,7 @@ app.use("/api/v1/payment", PaymentRoutes);
 
 // Test route
 app.get("/", (req, res) => {
-  res.send("<h1>Working</h1>");
+  res.send("<h1>Hello From the server</h1>");
 });
 
 // Start server
