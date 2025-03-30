@@ -35,7 +35,8 @@ jobs:
       run: |
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
         chmod 600 private_key.pem
-        scp -i private_key.pem my-app.tar ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
+        scp -o StrictHostKeyChecking=no -i private_key.pem my-app.tar ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
+        
 
     - name: Deploy Docker Image on EC2
       run: |
