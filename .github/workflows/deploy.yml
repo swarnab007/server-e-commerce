@@ -1,0 +1,47 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: us-east-1
+  IMAGE_NAME: my-app:latest
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to AWS ECR (optional if using ECR)
+      run: |
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region $AWS_REGION
+
+    - name: Build Docker Image
+      run: |
+        docker build -t $IMAGE_NAME .
+
+    - name: Save Docker Image to Tar File
+      run: |
+        docker save -o my-app.tar $IMAGE_NAME
+
+    - name: Copy Docker Image to EC2
+      run: |
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > private_key.pem
+        chmod 600 private_key.pem
+        scp -i private_key.pem my-app.tar ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
+
+    - name: Deploy Docker Image on EC2
+      run: |
+        ssh -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          docker load -i my-app.tar
+          docker stop my-app || true
+          docker rm my-app || true
+          docker run -d --name my-app -p 80:3000 my-app:latest
+        EOF
