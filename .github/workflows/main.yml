@@ -1,58 +1,58 @@
 name: CI-CD for E-Commerce Server
 
+# Trigger this workflow on push events to the main branch and manual dispatch
 on:
   push:
     branches:
       - main
   workflow_dispatch:
 
+# Permissions needed for the workflow
 permissions:
   contents: write
 
+# Define the jobs to be run in the workflow
 jobs:
+  # Build Job
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
 
+    # Steps to be executed in the Build job
     steps:
-      - name: Checkout repository
+      - name: Checkout repository  # Fetch the latest code from GitHub repository
         uses: actions/checkout@v3
 
-      # Login to DockerHub using GitHub Secrets
-      - name: Login to DockerHub
+      - name: Login to DockerHub  # Authenticate Docker CLI using GitHub secrets
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
 
-      # Build the Docker image from the repository
-      - name: Build Docker image
-        run: docker build -t swarnab/ecommerce-server:latest .
+      - name: Build Docker image  # Create a Docker image with a specific tag
+        run: docker build -t swarnab/ecommerce-server .
 
-      # Push the built Docker image to DockerHub
-      - name: Push to DockerHub
+      - name: Push to DockerHub  # Push the Docker image to DockerHub repository
         run: docker push swarnab/ecommerce-server:latest
 
+  # Deploy Job
   deploy:
-    runs-on: self-hosted  # Uses a self-hosted runner on AWS EC2
+    runs-on: self-hosted  # Use a self-hosted EC2 runner for deployment
 
     steps:
-      # Stop and remove the existing Docker container if it's running
-      - name: Stop and remove old container
-        run: |
-          if [ "$(docker ps -aq -f name=ecommerce-server)" ]; then
-            docker stop ecommerce-server
-            docker rm ecommerce-server
-          fi
-
-      # Pull the latest Docker image from DockerHub
-      - name: Pull latest Docker image
+      - name: Pull Docker image  # Fetch the latest Docker image from DockerHub
         run: docker pull swarnab/ecommerce-server:latest
 
-      # Run the new Docker container with environment variables from .env file
-      - name: Run new Docker container
+      - name: Stop and remove existing Docker container  # Stop and delete old container if exists
+        run: |
+          if [ "$(docker ps -aq -f name=ecommerce-server)" ]; then
+            docker stop ecommerce-server  # Stop the running container
+            docker rm ecommerce-server  # Remove the container
+          fi
+          sudo lsof -ti :8000 | xargs -r sudo kill -9  # Free port 8000 if already in use
+      
+      - name: Run new Docker container  # Start a new container with the latest image
         run: |
           docker run -d \
             --name ecommerce-server \
             -p 8000:8000 \
-            --env-file /home/ubuntu/ecommerce-server/.env \
             swarnab/ecommerce-server:latest
