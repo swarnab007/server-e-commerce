@@ -65,4 +65,6 @@ jobs:
           docker run -d \
             --name ecommerce-server \
             -p 8000:8000 \
+            -e MONGODB_URI=${{ secrets.MONGO_URI }} \  
+            -e NODE_ENV=production \
             swarnab/ecommerce-server:latest
