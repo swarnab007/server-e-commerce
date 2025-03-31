@@ -1,39 +1,58 @@
 name: CI-CD for E-Commerce Server
 
-# Trigger this workflow on push events to the main branch and manual dispatch
 on:
   push:
     branches:
       - main
   workflow_dispatch:
 
-# Permissions needed for the workflow
 permissions:
   contents: write
 
-# Define the jobs to be run in the workflow
 jobs:
-  # Deploy Job
-  deploy:
-    # Use a self-hosted runner for deployment
-    runs-on: self-hosted
+  build:
+    runs-on: ubuntu-latest
 
-    # Steps to be executed in the Deploy job
-    steps: 
-      # Checkout the repository
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # SSH into EC2 instance and deploy the application
-      - name: Deploy to AWS EC2
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          script: |
-            cd /home/${{ secrets.EC2_USER }}/ecommerce-server
-            git pull origin main
-            npm install
-            npm run build
-            pm2 restart ecommerce-server || pm2 start npm --name "ecommerce-server" -- run start
+      # Login to DockerHub using GitHub Secrets
+      - name: Login to DockerHub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+
+      # Build the Docker image from the repository
+      - name: Build Docker image
+        run: docker build -t swarnab/ecommerce-server:latest .
+
+      # Push the built Docker image to DockerHub
+      - name: Push to DockerHub
+        run: docker push swarnab/ecommerce-server:latest
+
+  deploy:
+    runs-on: self-hosted  # Uses a self-hosted runner on AWS EC2
+
+    steps:
+      # Stop and remove the existing Docker container if it's running
+      - name: Stop and remove old container
+        run: |
+          if [ "$(docker ps -aq -f name=ecommerce-server)" ]; then
+            docker stop ecommerce-server
+            docker rm ecommerce-server
+          fi
+
+      # Pull the latest Docker image from DockerHub
+      - name: Pull latest Docker image
+        run: docker pull swarnab/ecommerce-server:latest
+
+      # Run the new Docker container with environment variables from .env file
+      - name: Run new Docker container
+        run: |
+          docker run -d \
+            --name ecommerce-server \
+            -p 8000:8000 \
+            --env-file /home/ubuntu/ecommerce-server/.env \
+            swarnab/ecommerce-server:latest
