@@ -59,12 +59,12 @@ jobs:
           sudo lsof -ti :8000 | xargs -r sudo kill -9
       
       # Run the new Docker container
-      # FIX: Changed port from 8080 to 8000 to match Dockerfile EXPOSE
+      
       - name: Run Docker container
         run: |
           docker run -d \
-            --name ecommerce-server \
-            -p 8000:8000 \
-            -e MONGO_URI=${{ secrets.MONGO_URI }} \
-            -e NODE_ENV=production \
-            swarnab/ecommerce-server:latest
+              --name ecommerce-server \
+              -p 8000:8000 \
+              -e MONGO_URI=${{ secrets.MONGO_URI }} \
+              -e NODE_ENV=production \
+              swarnab/ecommerce-server:latest
