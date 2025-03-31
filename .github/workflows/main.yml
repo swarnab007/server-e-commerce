@@ -7,37 +7,61 @@ on:
       - main
   workflow_dispatch:
 
+# Permissions needed for the workflow
 permissions:
   contents: write
 
+# define the jobs to be run in the workflow
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
+  # build Job
+  build:
+    runs-on: ubuntu-latest
+
+    # Steps to be executed in the Build job
     steps:
+      # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Delete old container if exists
+      # Login to DockerHub
+      - name: Login to DockerHub
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+
+      # Build the Docker image with a specific tag
+      - name: Build Docker image
+        run: docker build -t swarnab/ecommerce-server .
+
+      # Push the Docker image to DockerHub
+      - name: Push to DockerHub
+        run: docker push swarnab/ecommerce-server:latest
+
+  # Deploy Job
+  deploy:
+    # Use a self-hosted runner for deployment
+    runs-on: self-hosted
+
+    # Steps to be executed in the Deploy job
+    steps: 
+      # Pull the latest Docker image from DockerHub
+      - name: Pull Docker image
+        run: docker pull swarnab/ecommerce-server:latest
+
+      # Stop and remove the existing Docker container
+      - name: Delete old container
         run: |
-          if [ $(docker ps -q -f name=ecommerce-server) ]; then
-            echo "Stopping and removing existing container"
+          if [ "$(docker ps -q -f name=ecommerce-server)" ]; then
             docker stop ecommerce-server
             docker rm ecommerce-server
-          else
-            echo "No existing container found"
           fi
-
-      - name: Build Docker image
-        run: docker build -t ecommerce-server:latest .
-
-      - name: Create .env file from GitHub Secrets
-        run: |
-          echo "${{ secrets.PROD_ENV }}" > .env
-
+      
+      # Run the new Docker container
+      # FIX: Changed port from 8080 to 8000 to match Dockerfile EXPOSE
       - name: Run Docker container
         run: |
           docker run -d \
             --name ecommerce-server \
             -p 8000:8000 \
-            --env-file .env \
-            ecommerce-server:latest
+            swarnab/ecommerce-server:latest
