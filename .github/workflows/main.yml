@@ -52,7 +52,7 @@ jobs:
       # Stop and remove the existing Docker container
       - name: Delete old container
         run: |
-          if [ "$(docker ps -q -f name=ecommerce-server)" ]; then
+          if [ "$(docker ps -aq -f name=ecommerce-server)" ]; then
             docker stop ecommerce-server
             docker rm ecommerce-server
           fi
