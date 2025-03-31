@@ -56,6 +56,8 @@ jobs:
             docker stop ecommerce-server
             docker rm ecommerce-server
           fi
+      # Remove any existing processes using port 8000
+          sudo lsof -ti :8000 | xargs -r sudo kill -9
       
       # Run the new Docker container
       # FIX: Changed port from 8080 to 8000 to match Dockerfile EXPOSE
